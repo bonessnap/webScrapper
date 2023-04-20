@@ -1,4 +1,4 @@
-/__pycache__
-/venv
-/parsers/__pycache__
-/parsers/components/__pycache__
+__pycache__/
+venv/
+parsers/__pycache__/
+parsers/components/__pycache__/
