@@ -9,7 +9,7 @@ Courses = []
 def sendCourseToHell(Course):
     global Courses
     Courses.append(Course)
-
+    
 if __name__ == '__main__':
     parse_alison.init(Courses, False)
     #parse_coursera.init(Courses, False)
