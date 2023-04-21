@@ -63,6 +63,7 @@ def getCoursesFromTagPage(Link, Tag):
     containers = BROWSER.find_elements(By.XPATH, xpathes[0])
     log(f"Containers: {len(containers)}")
     
+    # проходимся по контейнерам и собираем с них инфу
     try:
         for container in range(len(containers)):
             container_xpath = xpathes[0] + f"[{container + 1}]"
