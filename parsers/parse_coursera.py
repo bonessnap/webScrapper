@@ -154,7 +154,7 @@ def parseBegin(CoursesList):
     # 3) получаем с html страницы курсы
     # 4) подстраховочно ждём 2 сек
     
-    for i in range(PAGES_TOTAL):     # Заменить на range(PAGES_TOTAL) #range(10)
+    for i in range(PAGES_TOTAL)[:10]: #удалить [:10]
         log(f"Parsing page {i + 1}")
         html = BROWSER.page_source
         WebDriverWait(BROWSER, 10).until(EC.element_to_be_clickable((By.XPATH, "//button[@class='label-text box arrow'][last()]")))

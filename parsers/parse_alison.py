@@ -3,13 +3,11 @@ from parsers.components import init_browser
 from parsers.components import waiter
 import time
 from selenium.webdriver.common.by import By
-from selenium.webdriver.support import expected_conditions as EC
-from selenium.webdriver.support.ui import WebDriverWait
 from bs4 import BeautifulSoup
 
 
 # РАБОТАЕТ ПОЛНОСТЬЮ
-# смотреть лайн 130 (заменить кол-во курсов)
+# смотреть лайн 126 (заменить кол-во курсов)
 
 URL = "https://alison.com"
 SITEMAP = "/sitemap"
@@ -50,15 +48,11 @@ def getCourseInfoFromLink(Link, WaitTime):
     xpathes = [imageXpath, titleXpath, descriptionXpath, tagXpath, authorXpath,
                studentsCountXpath, durationXpath, ratingOneXpath, ratingTwoXpath]
 
-    methods = []
-    for i in xpathes:
-        methods.append(EC.presence_of_element_located((By.XPATH, i)))
 
     err = "Loading page"
     try:
         BROWSER.get(Link)
-        WebDriverWait(BROWSER, WaitTime).until(
-            waiter.waitForAllElements(methods))
+        waiter.waitAll(BROWSER, WaitTime, xpathes)
     except:
         print(f"Error at {err}")
         return False
@@ -128,16 +122,14 @@ def parseBegin(CoursesList):
     COURSES_TOTAL = len(links)
 
     # УБРАТЬ [:10]
-    for link in links[:10]:
+    for link in links[:10]: # удалить [:10]
         err_counter = 5
         course = False
         Log(f">>Course link: {link}")
         while course == False and err_counter != 0:
-            t = time.time()
             Log(f"Course {links.index(link)}, tries left: {err_counter}")
             course = getCourseInfoFromLink(link, 5)
             err_counter = err_counter - 1
-            Log(f"Time for link: {int(time.time() - t)}sec")
         if course != False:
             COURSES_PARSED = COURSES_PARSED + 1
             CoursesList.append(course)
