@@ -7,7 +7,7 @@ from bs4 import BeautifulSoup
 
 
 # РАБОТАЕТ ПОЛНОСТЬЮ
-# смотреть лайн 126 (заменить кол-во курсов)
+# смотреть лайн 127 (заменить кол-во курсов)
 
 URL = "https://alison.com"
 SITEMAP = "/sitemap"
@@ -36,19 +36,20 @@ def getCoursesLinks():
 
 
 def getCourseInfoFromLink(Link, WaitTime):
-    imageXpath = "//div[@class='l-card__img']//img[last()]"
-    titleXpath = "//h1"
-    descriptionXpath = "//span[@class='l-info__description-full']"
-    tagXpath = "//ol[@class='breadcrumb ']/li[@class='top-cat']"
-    authorXpath = "//span[@class='course-publisher l-pub__name']"
-    studentsCountXpath = "//span[@class='course-enrolled']"
-    durationXpath = "//div[@class='l-card__includes l-list l-list--tick']//li/span"
-    ratingOneXpath = "//span[@class='course-love'][1]"
-    ratingTwoXpath = "//span[@class='course-like'][1]"
-    xpathes = [imageXpath, titleXpath, descriptionXpath, tagXpath, authorXpath,
-               studentsCountXpath, durationXpath, ratingOneXpath, ratingTwoXpath]
-
-
+    data = {
+        'imageXpath':"//div[@class='l-card__img']//img[last()]",
+        'titleXpath':"//h1",
+        'descriptionXpath':"//span[@class='l-info__description-full']",
+        'tagXpath' : "//ol[@class='breadcrumb ']/li[@class='top-cat']",
+        'authorXpath':"//span[@class='course-publisher l-pub__name']",
+        'studentsCountXpath':"//span[@class='course-enrolled']",
+        "durationXpath":"//div[@class='l-card__includes l-list l-list--tick']//li/span",
+        'ratingOneXpath': "//span[@class='course-love'][1]",
+        'ratingTwoXpath': "//span[@class='course-like'][1]"
+    }
+    xpathes = []
+    for key in data:
+        xpathes.append(key)
     err = "Loading page"
     try:
         BROWSER.get(Link)
@@ -60,46 +61,46 @@ def getCourseInfoFromLink(Link, WaitTime):
     course = course_class.getCourse()
     try:
         err = "image link"
-        var = BROWSER.find_element(By.XPATH, imageXpath).get_attribute('src')
+        var = BROWSER.find_element(By.XPATH, data['imageXpath']).get_attribute('src')
         Log(f"{err}: {var}")
         course.ImageLink = var
 
         err = "title"
-        var = BROWSER.find_element(By.XPATH, titleXpath).text
+        var = BROWSER.find_element(By.XPATH, data['titleXpath']).text
         Log(f"{err}: {var}")
         course.Title = var
 
         err = "description"
-        var = BROWSER.find_element(By.XPATH, descriptionXpath).text
+        var = BROWSER.find_element(By.XPATH, data['descriptionXpath']).text
         Log(f"{err}: {var}")
         course.Description = var
 
         err = "author"
-        var = BROWSER.find_element(By.XPATH, authorXpath).text
+        var = BROWSER.find_element(By.XPATH, data['authorXpath']).text
         Log(f"{err}: {var}")
         course.Author = var
 
         err = "tag"
-        var = BROWSER.find_element(By.XPATH, tagXpath).text
+        var = BROWSER.find_element(By.XPATH, data['tagXpath']).text
         Log(f"{err}: {var}")
         course.Tags = var
 
         err = "studentsCount"
-        var = BROWSER.find_element(By.XPATH, studentsCountXpath).text
+        var = BROWSER.find_element(By.XPATH, data['studentsCountXpath']).text
         Log(f"{err}: {var}")
         course.Students = var
 
         err = "duration"
-        var = BROWSER.find_element(By.XPATH, durationXpath).text
+        var = BROWSER.find_element(By.XPATH, data["durationXpath"]).text
         Log(f"{err}: {var}")
         course.Duration = var
 
         # на сайте есть 2 типа рейтинга - очень понравился и просто понравился
         err = "rating one"
-        var1 = BROWSER.find_element(By.XPATH, ratingOneXpath).text
+        var1 = BROWSER.find_element(By.XPATH, data["ratingOneXpath"]).text
         Log(f"{err}: {var1}")
         err = "rating two"
-        var2 = BROWSER.find_element(By.XPATH, ratingTwoXpath).text
+        var2 = BROWSER.find_element(By.XPATH, data["ratingTwoXpath"]).text
         Log(f"{err}: {var2}")
         course.RateCount = int(var1) + int(var2)
 
@@ -118,17 +119,18 @@ def parseBegin(CoursesList):
     global COURSES_PARSED
     global BROWSER
     links = getCoursesLinks()
+    # ссылка на список курсов, нам ни к чему
     links.remove(links[0])
     COURSES_TOTAL = len(links)
 
-    # УБРАТЬ [:10]
+    # проходимся по ссылкам
     for link in links[:10]: # удалить [:10]
         err_counter = 5
         course = False
         Log(f">>Course link: {link}")
         while course == False and err_counter != 0:
             Log(f"Course {links.index(link)}, tries left: {err_counter}")
-            course = getCourseInfoFromLink(link, 5)
+            course = getCourseInfoFromLink(link, 3)
             err_counter = err_counter - 1
         if course != False:
             COURSES_PARSED = COURSES_PARSED + 1

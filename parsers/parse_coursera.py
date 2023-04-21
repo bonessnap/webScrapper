@@ -7,6 +7,8 @@ from parsers.components import course_class
 from parsers.components import init_browser
 from parsers.components import waiter
 
+# РАБОТАЕТ, но не идеал, нужно переделать смотреть лайн 158
+
 URL = "https://www.coursera.org"
 BROWSER = init_browser.getBrowser()
 
@@ -153,7 +155,7 @@ def parseBegin(CoursesList):
     # 2) кликаем на "следующая страница" и отправляем браузер в загрузку
     # 3) получаем с html страницы курсы
     
-    for i in range(PAGES_TOTAL)[:10]: #удалить [:10]
+    for i in range(PAGES_TOTAL)[:5]: #удалить [:5]
         log(f"Parsing page {i + 1}")
         html = BROWSER.page_source
         WebDriverWait(BROWSER, 10).until(EC.element_to_be_clickable((By.XPATH, "//button[@class='label-text box arrow'][last()]")))

@@ -1,10 +1,7 @@
 from bs4 import BeautifulSoup
-import components.course_class as course_class
+import parsers.components.course_class as course_class
 import time
-import components.init_browser as init_browser
-import json
-import pickle
-from selenium.webdriver.common.by import By
+import parsers.components.init_browser as init_browser
 
 
 ## НЕ РАБОТАЕТ, ПРОБЛЕМА С КУКИ И КАПЧОЙ

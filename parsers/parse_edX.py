@@ -6,7 +6,7 @@ from selenium.webdriver.common.by import By
 import copy
 
 # РАБОТАЕТ ПОЛНОСТЬЮ
-# СМОТРЕТЬ ЛАЙН 43
+# СМОТРЕТЬ ЛАЙН 44
 
 URL = "https://www.edx.org"
 SITEMAP = "/sitemap"
@@ -41,7 +41,7 @@ def getAllTagsLinks():
     # формат словаря
     # TagName : Link
     data = {}
-    for i in BROWSER.find_elements(By.XPATH, xpathes[0])[:3]: # УБРАТЬ [:3]
+    for i in BROWSER.find_elements(By.XPATH, xpathes[0])[:2]: # УБРАТЬ [:2]
         data[f"{i.text}"] = i.get_attribute('href')
 
     return data
