@@ -1,7 +1,7 @@
 from parsers import parse_alison
 from parsers import parse_coursera
 from parsers import parse_sololearn
-import parsers.parse_edX as parse_edX
+from parsers import parse_edX
 import parsers.components.course_class as course_class
 import time
 
