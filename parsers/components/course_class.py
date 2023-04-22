@@ -15,6 +15,14 @@ class Course:
         self.Price = ""
         self.Difficulty = ""
 
+    def __eq__(self, other):
+        self.Tags.extend(other.Tags)
+        set(self.Tags)
+        return self.Link == other.Link
+
+    def __hash__(self):
+        return hash(self.Link)
+    
     def printSelf(self):
         print("Title:", self.Title)
         print("Link:", self.Link)
