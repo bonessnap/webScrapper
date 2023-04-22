@@ -34,8 +34,8 @@ def log(string):
 
 
 # возвращает с первой странички количество курсов на сайте (такое есть)
-def getPagesTotalCount(html):
-    pagesCount = int(BROWSER.find_element(By.XPATH, "(//span[@class='cds-119 css-pa6u6k cds-121'])[last()]").text)
+def getPagesTotalCount(xpath):
+    pagesCount = int(BROWSER.find_element(By.XPATH, xpath).text)
     log(f"Pages total: {pagesCount}")
     return pagesCount
 
@@ -146,13 +146,13 @@ def parseBegin(CoursesList):
 
     data = {
         "container" : "//li[@class='cds-9 css-0 cds-11 cds-grid-item cds-56 cds-64 cds-76']",
-        "pagesCount" : "(//span[@class='cds-119 css-pa6u6k cds-121'])[last()]",
-        "nextPageButton" : "//button[@class='label-text box arrow'][last()]"
+        "pagesCount" : "//div[@class='pagination-controls-container']/*[last()-1]",
+        "nextPageButton" : "//div[@class='pagination-controls-container']/*[last()]"
     }
     BROWSER.get(URL + "/courses")
     waiter.waitAll(BROWSER, 5, [data["container"], data["pagesCount"]])
     html = BROWSER.page_source
-    PAGES_TOTAL = getPagesTotalCount(html)
+    PAGES_TOTAL = getPagesTotalCount(data["pagesCount"])
     COURSES_TOTAL = getCoursesTotalCount(html)
 
     # ПОЛУЧАЕМ КУРСЫ СО /courses
@@ -169,11 +169,11 @@ def parseBegin(CoursesList):
         PAGES_PARSED = PAGES_PARSED + 1
         waiter.waitAll(BROWSER, 5, [data["container"]])
         log("\n\n")
-
+ 
     BROWSER.get(URL + "/courses?query=free")
-    waiter.waitAll(BROWSER, 5, [data["container"], data["pagesCount"]])
-    html = BROWSER.page_source
-    pagesCountCurrentQuery = getPagesTotalCount(html)
+    waiter.waitAll(BROWSER, 5, [ data["container"], data["pagesCount"] ])
+    print(BROWSER.find_element(By.XPATH, data["pagesCount"]).text)
+    pagesCountCurrentQuery = getPagesTotalCount(data["pagesCount"])
     PAGES_TOTAL = PAGES_TOTAL + pagesCountCurrentQuery
 
     for i in range(pagesCountCurrentQuery)[:5]: #удалить [:5]
