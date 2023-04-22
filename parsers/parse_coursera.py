@@ -14,7 +14,6 @@ BROWSER = init_browser.getBrowser()
 
 # сколько всего страниц и курсов на сайте
 PAGES_TOTAL = 0
-COURSES_TOTAL = 0
 
 # сколько спарсили страниц и курсов
 PAGES_PARSED = 0
@@ -33,38 +32,20 @@ def log(string):
         print(string)
 
 
+def getAllQueries(Xpath):
+    queries = []
+    for a in BROWSER.find_elements(By.XPATH, Xpath):
+        queries.append(a.get_attribute('href'))
+    return queries
+
 # возвращает с первой странички количество курсов на сайте (такое есть)
 def getPagesTotalCount(xpath):
     pagesCount = int(BROWSER.find_element(By.XPATH, xpath).text)
     log(f"Pages total: {pagesCount}")
     return pagesCount
 
-
-# возвращает с первой странички количество страниц с курсами
-def getCoursesTotalCount(html):
-    log("getCoursesTotalCount()")
-    soup = BeautifulSoup(html, "html.parser")
-
-    # эта строка приходит в разных видах, прикол
-    coursesTotal = soup.find('h1').find('span').text
-    log(f"Courses total (text): {coursesTotal}")
-    # Иногда там формат "ЧЧ\xa0ЧЧЧ Результатов"
-    if len(coursesTotal.split('\xa0')) == 2:
-        log(f"Contains xa0")
-        coursesTotal = coursesTotal.split("\xa0")
-        log(f"Courses total split('xa0'): {coursesTotal}")
-        coursesTotal = coursesTotal[0] + coursesTotal[1].split(' ')[0]
-        log(f"Courses total [0] + [1]split(' ')[0]: {coursesTotal}")
-    # Иногда там формат "Результатов: ЧЧЧЧЧЧ"
-    else:
-        log(f"Doesn`t contains xa0")
-        coursesTotal = coursesTotal.split(" ")[1]
-        log(f"Courses total split(' ')[1]: {coursesTotal}")
-    return int(coursesTotal)
-
-
 # получает курсы со странички и заносит их в список
-def getCoursesFromPage(html, CoursesList):
+def getCoursesFromPage(html):
     global COURSES_PARSED
     soup = BeautifulSoup(html, "html.parser")
     containers = []
@@ -134,58 +115,67 @@ def getCoursesFromPage(html, CoursesList):
                     course.Duration = duration
                     log(f'Duration: {duration}')
 
-        CoursesList.append(course)
         COURSES_PARSED = COURSES_PARSED + 1
         log("")
+        return course
 
 
-def parseBegin(CoursesList):
+def parseBegin(AllCoursesList):
     global PAGES_PARSED
     global COURSES_TOTAL
     global PAGES_TOTAL
+    global LOG
 
     data = {
+        # первые 4 блока с ссылками 
+        "Queries" : "(//div[@class='cds-9 rc-SubFooterSection lohp-rebrand css-0 cds-11 cds-grid-item cds-61'])[position() < 5]//a",
+        # контейнеры с курсами на странице
         "container" : "//li[@class='cds-9 css-0 cds-11 cds-grid-item cds-56 cds-64 cds-76']",
+        # блок в котором указано количество странци по текущему запросу
         "pagesCount" : "//div[@class='pagination-controls-container']/*[last()-1]",
+        # кнопка перелистывания
         "nextPageButton" : "//div[@class='pagination-controls-container']/*[last()]"
     }
+    CoursesList = []
+    queries = []
+    err_counter = 5
     BROWSER.get(URL + "/courses")
-    waiter.waitAll(BROWSER, 5, [data["container"], data["pagesCount"]])
+    while len(queries) == 0 and err_counter != 0:
+        waiter.waitAll(BROWSER, 5, [data["Queries"]])
+        queries = getAllQueries(data["Queries"])
+        err_counter = err_counter - 1
+        if len(queries) == 0:
+            BROWSER.refresh()
+
+    log(f"Queries: {len(queries)}")
+    if len(queries) == 0:
+        return False
+    
     html = BROWSER.page_source
-    PAGES_TOTAL = getPagesTotalCount(data["pagesCount"])
-    COURSES_TOTAL = getCoursesTotalCount(html)
 
-    # ПОЛУЧАЕМ КУРСЫ СО /courses
-    # 1) получаем код со страницы в html
-    # 2) кликаем на "следующая страница" и отправляем браузер в загрузку
-    # 3) получаем с html страницы курсы
-    pagesCountCurrentQuery = PAGES_TOTAL
-    for i in range(pagesCountCurrentQuery)[:5]: #удалить [:5]
-        log(f"Parsing page {i + 1}")
-        html = BROWSER.page_source
-        WebDriverWait(BROWSER, 5).until(EC.element_to_be_clickable((By.XPATH, data["nextPageButton"])))
-        BROWSER.find_element(By.XPATH, data["nextPageButton"]).click()
-        getCoursesFromPage(html, CoursesList)
-        PAGES_PARSED = PAGES_PARSED + 1
-        waiter.waitAll(BROWSER, 5, [data["container"]])
-        log("\n\n")
- 
-    BROWSER.get(URL + "/courses?query=free")
-    waiter.waitAll(BROWSER, 5, [ data["container"], data["pagesCount"] ])
-    print(BROWSER.find_element(By.XPATH, data["pagesCount"]).text)
-    pagesCountCurrentQuery = getPagesTotalCount(data["pagesCount"])
-    PAGES_TOTAL = PAGES_TOTAL + pagesCountCurrentQuery
+    for query in queries[:5]: #удалить [:2]
+        log(f"Query {queries.index(query)}: {query}")
+        BROWSER.get(query)
+        waiter.waitAll(BROWSER, 5, [data["container"], data["pagesCount"]])
+        pagesCountCurrentQuery = getPagesTotalCount(data["pagesCount"])
+        PAGES_TOTAL = pagesCountCurrentQuery + PAGES_TOTAL
+        for i in range(pagesCountCurrentQuery)[:5]: #удалить [:5]
+            log(f"Parsing page {i + 1}")
+            waiter.waitAll(BROWSER, 5, [data["container"]])
+            html = BROWSER.page_source
+            LOG = False
+            course = getCoursesFromPage(html)
+            LOG = True
+            if not any(x.Link == course.Link for x in CoursesList):
+                CoursesList.append(course)
+            
+            waiter.waitAll(BROWSER, 5, [data["nextPageButton"]])
+            BROWSER.find_element(By.XPATH, data["nextPageButton"]).click()
+            PAGES_PARSED = PAGES_PARSED + 1
+            log("")
+        log("")
 
-    for i in range(pagesCountCurrentQuery)[:5]: #удалить [:5]
-        log(f"Parsing page {i + 1}")
-        WebDriverWait(BROWSER, 5).until(EC.element_to_be_clickable((By.XPATH, data["nextPageButton"])))
-        html = BROWSER.page_source
-        BROWSER.find_element(By.XPATH, data["nextPageButton"]).click()
-        getCoursesFromPage(html, CoursesList)
-        PAGES_PARSED = PAGES_PARSED + 1
-        waiter.waitAll(BROWSER, 5, [data["container"]])
-        log("\n\n")
-
+    log(f"Courses in list: {len(CoursesList)}")
 
     BROWSER.close()
     BROWSER.quit()
@@ -200,6 +190,6 @@ def init(AllCourses, Log):
     print(f"Parsing {URL}")
     start = time.time()
     parseBegin(AllCourses)
-    print(f"Done. {URL} parsed. Total of {COURSES_PARSED}/{COURSES_TOTAL} courses from {PAGES_PARSED}/{PAGES_TOTAL} pages. Time: {int(time.time() - start)}sec")
+    print(f"Done. {URL} parsed. Total of {COURSES_PARSED} courses from {PAGES_PARSED}/{PAGES_TOTAL} pages. Time: {int(time.time() - start)}sec")
 
-init([], False)
+init([], True)
