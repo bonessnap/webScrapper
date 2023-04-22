@@ -3,9 +3,9 @@ import time
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
-from parsers.components import course_class
-from parsers.components import init_browser
-from parsers.components import waiter
+from components import course_class
+from components import init_browser
+from components import waiter
 
 # РАБОТАЕТ, но не идеал, нужно переделать смотреть лайн 158
 
@@ -35,9 +35,7 @@ def log(string):
 
 # возвращает с первой странички количество курсов на сайте (такое есть)
 def getPagesTotalCount(html):
-    soup = BeautifulSoup(html, "html.parser")
-    pagesCount = int(soup.find_all('div', class_=[
-                     'rc-PaginationControls', 'horizontal-box', 'align-items-right', 'large-style', 'cds', 'css-k2t558'])[-1].text[5:])
+    pagesCount = int(BROWSER.find_element(By.XPATH, "(//span[@class='cds-119 css-pa6u6k cds-121'])[last()]").text)
     log(f"Pages total: {pagesCount}")
     return pagesCount
 
@@ -145,25 +143,49 @@ def parseBegin(CoursesList):
     global PAGES_PARSED
     global COURSES_TOTAL
     global PAGES_TOTAL
+
+    data = {
+        "container" : "//li[@class='cds-9 css-0 cds-11 cds-grid-item cds-56 cds-64 cds-76']",
+        "pagesCount" : "(//span[@class='cds-119 css-pa6u6k cds-121'])[last()]",
+        "nextPageButton" : "//button[@class='label-text box arrow'][last()]"
+    }
     BROWSER.get(URL + "/courses")
-    time.sleep(5)
+    waiter.waitAll(BROWSER, 5, [data["container"], data["pagesCount"]])
     html = BROWSER.page_source
     PAGES_TOTAL = getPagesTotalCount(html)
     COURSES_TOTAL = getCoursesTotalCount(html)
 
+    # ПОЛУЧАЕМ КУРСЫ СО /courses
     # 1) получаем код со страницы в html
     # 2) кликаем на "следующая страница" и отправляем браузер в загрузку
     # 3) получаем с html страницы курсы
-    
-    for i in range(PAGES_TOTAL)[:5]: #удалить [:5]
+    pagesCountCurrentQuery = PAGES_TOTAL
+    for i in range(pagesCountCurrentQuery)[:5]: #удалить [:5]
         log(f"Parsing page {i + 1}")
         html = BROWSER.page_source
-        WebDriverWait(BROWSER, 10).until(EC.element_to_be_clickable((By.XPATH, "//button[@class='label-text box arrow'][last()]")))
-        BROWSER.find_element(By.XPATH, "//button[@class='label-text box arrow'][last()]").click()
+        WebDriverWait(BROWSER, 5).until(EC.element_to_be_clickable((By.XPATH, data["nextPageButton"])))
+        BROWSER.find_element(By.XPATH, data["nextPageButton"]).click()
         getCoursesFromPage(html, CoursesList)
         PAGES_PARSED = PAGES_PARSED + 1
-        time.sleep(4)
+        waiter.waitAll(BROWSER, 5, [data["container"]])
         log("\n\n")
+
+    BROWSER.get(URL + "/courses?query=free")
+    waiter.waitAll(BROWSER, 5, [data["container"], data["pagesCount"]])
+    html = BROWSER.page_source
+    pagesCountCurrentQuery = getPagesTotalCount(html)
+    PAGES_TOTAL = PAGES_TOTAL + pagesCountCurrentQuery
+
+    for i in range(pagesCountCurrentQuery)[:5]: #удалить [:5]
+        log(f"Parsing page {i + 1}")
+        WebDriverWait(BROWSER, 5).until(EC.element_to_be_clickable((By.XPATH, data["nextPageButton"])))
+        html = BROWSER.page_source
+        BROWSER.find_element(By.XPATH, data["nextPageButton"]).click()
+        getCoursesFromPage(html, CoursesList)
+        PAGES_PARSED = PAGES_PARSED + 1
+        waiter.waitAll(BROWSER, 5, [data["container"]])
+        log("\n\n")
+
 
     BROWSER.close()
     BROWSER.quit()
@@ -179,3 +201,5 @@ def init(AllCourses, Log):
     start = time.time()
     parseBegin(AllCourses)
     print(f"Done. {URL} parsed. Total of {COURSES_PARSED}/{COURSES_TOTAL} courses from {PAGES_PARSED}/{PAGES_TOTAL} pages. Time: {int(time.time() - start)}sec")
+
+init([], False)
