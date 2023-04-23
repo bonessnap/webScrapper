@@ -14,16 +14,22 @@ class Course:
         self.Language = ""
         self.Price = ""
         self.Difficulty = ""
+        self.Platform = ""
 
     def __eq__(self, other):
-        self.Tags.extend(other.Tags)
-        set(self.Tags)
-        return self.Link == other.Link
+        if type(other) != Course:
+            return False
+        try:
+            self.Tags.extend(other.Tags)
+            self.Tags = set(self.Tags)
+        finally:
+            return self.Link == other.Link
 
     def __hash__(self):
         return hash(self.Link)
     
     def printSelf(self):
+        print("Platform:", self.Platform)
         print("Title:", self.Title)
         print("Link:", self.Link)
         print("Author:", self.Author)

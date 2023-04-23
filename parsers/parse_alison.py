@@ -1,6 +1,7 @@
 from parsers.components import course_class
 from parsers.components import init_browser
 from parsers.components import waiter
+from parsers.components import db_connector
 import time
 from selenium.webdriver.common.by import By
 from bs4 import BeautifulSoup
@@ -24,14 +25,17 @@ def Log(Text):
         print(Text)
 
 
-def getCoursesLinks():
+def getCoursesLinks(DBLinks):
     BROWSER.get(URL + SITEMAP)
     html = BROWSER.page_source
     soup = BeautifulSoup(html, "html.parser")
     container = soup.find_all('div', class_="sitemap-col")[1]
-    links = container.find_all('a')
-    for i in range(len(links)):
-        links[i] = links[i]['href']
+    a = container.find_all('a')
+    links = []
+    for i in range(len(a)):
+        # если в базе есть ссылка, то её пропускам и не заносим в список на парсинг
+        if not a[i]['href'] in DBLinks:
+            links.append(a[i]['href'])
     return links
 
 
@@ -49,54 +53,57 @@ def getCourseInfoFromLink(Link, WaitTime):
     }
     xpathes = []
     for key in data:
-        xpathes.append(key)
+        xpathes.append(data[key])
     err = "Loading page"
-    try:
-        BROWSER.get(Link)
-        waiter.waitAll(BROWSER, WaitTime, xpathes)
-    except:
-        print(f"Error at {err}")
-        return False
+    BROWSER.get(Link)
 
     course = course_class.getCourse()
     try:
         err = "image link"
+        waiter.waitAll(BROWSER, WaitTime, [data["imageXpath"]])
         var = BROWSER.find_element(By.XPATH, data['imageXpath']).get_attribute('src')
         Log(f"{err}: {var}")
         course.ImageLink = var
 
         err = "title"
+        waiter.waitAll(BROWSER, WaitTime, [data["titleXpath"]])
         var = BROWSER.find_element(By.XPATH, data['titleXpath']).text
         Log(f"{err}: {var}")
         course.Title = var
 
         err = "description"
+        waiter.waitAll(BROWSER, WaitTime, [data["descriptionXpath"]])
         var = BROWSER.find_element(By.XPATH, data['descriptionXpath']).text
         Log(f"{err}: {var}")
         course.Description = var
 
         err = "author"
+        waiter.waitAll(BROWSER, WaitTime, [data["authorXpath"]])
         var = BROWSER.find_element(By.XPATH, data['authorXpath']).text
         Log(f"{err}: {var}")
         course.Author = var
 
         err = "tag"
+        waiter.waitAll(BROWSER, WaitTime, [data["tagXpath"]])
         var = BROWSER.find_element(By.XPATH, data['tagXpath']).text
         Log(f"{err}: {var}")
-        course.Tags = var
+        course.Tags.append(var)
 
         err = "studentsCount"
+        waiter.waitAll(BROWSER, WaitTime, [data["studentsCountXpath"]])
         var = BROWSER.find_element(By.XPATH, data['studentsCountXpath']).text
         Log(f"{err}: {var}")
         course.Students = var
 
         err = "duration"
+        waiter.waitAll(BROWSER, WaitTime, [data["durationXpath"]])
         var = BROWSER.find_element(By.XPATH, data["durationXpath"]).text
         Log(f"{err}: {var}")
         course.Duration = var
 
         # на сайте есть 2 типа рейтинга - очень понравился и просто понравился
         err = "rating one"
+        waiter.waitAll(BROWSER, WaitTime, [data["ratingOneXpath"], data["ratingTwoXpath"]])
         var1 = BROWSER.find_element(By.XPATH, data["ratingOneXpath"]).text
         Log(f"{err}: {var1}")
         err = "rating two"
@@ -107,6 +114,7 @@ def getCourseInfoFromLink(Link, WaitTime):
         # стандартные поля по-умолчанию
         course.Document = "Sertificate"
         course.Link = Link
+        course.Platform = URL
     except:
         Log(f"Error at {err}")
         return False
@@ -114,11 +122,11 @@ def getCourseInfoFromLink(Link, WaitTime):
     return course
 
 
-def parseBegin(CoursesList):
+def parseBegin(DBLinks):
     global COURSES_TOTAL
     global COURSES_PARSED
     global BROWSER
-    links = getCoursesLinks()
+    links = getCoursesLinks(DBLinks)
     # ссылка на список курсов, нам ни к чему
     links.remove(links[0])
     COURSES_TOTAL = len(links)
@@ -134,15 +142,16 @@ def parseBegin(CoursesList):
             err_counter = err_counter - 1
         if course != False:
             COURSES_PARSED = COURSES_PARSED + 1
-            CoursesList.append(course)
+            db_connector.insertCourseToDB(course)
             Log("")
         Log("")
 
 
-def init(AllCourses, Log):
+def init(Log):
     global LOG
     LOG = Log
     print(f"Parsing {URL}")
+    DBLinks = db_connector.getCoursesLinksByURL(URL)
     start = time.time()
-    parseBegin(AllCourses)
-    print(f"Done. {URL} parsed. Total of {COURSES_PARSED}/{COURSES_TOTAL} courses. Time: {int(time.time() - start)}sec")
+    parseBegin(DBLinks)
+    print(f"Done. {URL} parsed with {COURSES_PARSED}/{COURSES_TOTAL} courses. Total of {COURSES_PARSED + len(DBLinks)} courses in database. Time: {int(time.time() - start)}sec")

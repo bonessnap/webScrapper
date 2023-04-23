@@ -3,14 +3,15 @@ import time
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
-from components import course_class
-from components import browser
-from components import waiter
+from parsers.components import course_class
+from parsers.components import init_browser
+from parsers.components import db_connector
+from parsers.components import waiter
 
 # ПОЛНОСТЬЮ РАБОТАЕТ, СМОТРЕТЬ ЛАЙН 176
 
 URL = "https://www.coursera.org"
-BROWSER = browser.getBrowser()
+BROWSER = init_browser.getBrowser()
 
 # сколько всего страниц и курсов на сайте
 PAGES_TOTAL = 0
@@ -65,7 +66,7 @@ def getPagesTotalCount(xpath):
     return pagesCount
 
 # получает курсы со странички и заносит их в список
-def getCoursesFromPage(html, Tag):
+def getCoursesFromPage(html, Tag, DBLinks):
     soup = BeautifulSoup(html, "html.parser")
     containers = []
     couresList = []
@@ -76,6 +77,8 @@ def getCoursesFromPage(html, Tag):
     for i in range(len(containers)):
         course = course_class.getCourse()
         link = URL + containers[i].find('a')['href']
+        if link in DBLinks:
+            continue
         course.Link = link
         log(f"Link: {link}")
         imageLink = containers[i].find('img')['src']
@@ -132,11 +135,12 @@ def getCoursesFromPage(html, Tag):
                     course.Duration = duration
                     log(f'Duration: {duration}')
         log("")
+        course.Platform = URL
         couresList.append(course)
     return couresList
 
 
-def parseBegin(AllCoursesList):
+def parseBegin(DBLinks):
     global PAGES_PARSED
     global PAGES_TOTAL
     global LOG
@@ -165,7 +169,7 @@ def parseBegin(AllCoursesList):
         err_counter = err_counter - 1
         if len(queries) == 0:
             BROWSER.quit()
-            BROWSER = browser.getBrowser()
+            BROWSER = init_browser.getBrowser()
             BROWSER.get(URL + "/courses")
 
     log(f"Queries: {len(queries)}")
@@ -192,7 +196,7 @@ def parseBegin(AllCoursesList):
                 try:
                     waiter.waitAll(BROWSER, 5, [data["container"]])
                     html = BROWSER.page_source
-                    courses = getCoursesFromPage(html, tags[queries.index(query)])
+                    courses = getCoursesFromPage(html, tags[queries.index(query)], DBLinks)
                 except: 
                     courses = False
                     log("Error reading page")
@@ -234,8 +238,9 @@ def parseBegin(AllCoursesList):
         log("")
 
     log(f"Courses in list: {len(CoursesList)}")
-    set(CoursesList)
+    CoursesList = set(CoursesList)
     log(f"Courses in clean list: {len(CoursesList)}")
+    db_connector.insertCoursesListToDB(CoursesList)
 
     BROWSER.close()
     BROWSER.quit()
@@ -244,12 +249,11 @@ def parseBegin(AllCoursesList):
 # принимает список в который добавляются курсы и необходимость логгирования (True, False)
 
 
-def init(AllCourses, Log):
+def init(Log):
     global LOG
     LOG = Log
     print(f"Parsing {URL}")
+    DBLinks = db_connector.getCoursesLinksByURL(URL)
     start = time.time()
-    parseBegin(AllCourses)
-    print(f"Done. {URL} parsed. Total of {COURSES_PARSED} courses from {PAGES_PARSED}/{PAGES_TOTAL} pages. Time: {int(time.time() - start)}sec")
-
-init([], True)
+    parseBegin(DBLinks)
+    print(f"Done. {URL} parsed with {COURSES_PARSED}. Total of {COURSES_PARSED + len(DBLinks)} courses in DB. Time: {int(time.time() - start)}sec")

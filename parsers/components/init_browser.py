@@ -1,10 +1,7 @@
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
-import chromedriver_autoinstaller
 
 def getBrowser():
-    # Проверка версии драйвера Chrome и браузера
-    chromedriver_autoinstaller.install()
 
     # Настройки браузера
     chrome_options = Options()
