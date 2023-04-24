@@ -8,7 +8,7 @@ from bs4 import BeautifulSoup
 
 
 # РАБОТАЕТ ПОЛНОСТЬЮ
-# смотреть лайн 127 (заменить кол-во курсов)
+# смотреть лайн 135 (заменить кол-во курсов)
 
 URL = "https://alison.com"
 SITEMAP = "/sitemap"
@@ -151,7 +151,7 @@ def init(Log):
     global LOG
     LOG = Log
     print(f"Parsing {URL}")
-    DBLinks = db_connector.getCoursesLinksByURL(URL)
+    DBLinks = db_connector.getCoursesLinksByPlatform(URL)
     start = time.time()
     parseBegin(DBLinks)
     print(f"Done. {URL} parsed with {COURSES_PARSED}/{COURSES_TOTAL} courses. Total of {COURSES_PARSED + len(DBLinks)} courses in database. Time: {int(time.time() - start)}sec")

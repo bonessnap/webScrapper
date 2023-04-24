@@ -17,7 +17,7 @@ class Course:
         self.Platform = ""
 
     def __eq__(self, other):
-        if type(other) != Course:
+        if type(other) != type(self):
             return False
         try:
             self.Tags.extend(other.Tags)

@@ -8,7 +8,7 @@ from parsers.components import init_browser
 from parsers.components import db_connector
 from parsers.components import waiter
 
-# ПОЛНОСТЬЮ РАБОТАЕТ, СМОТРЕТЬ ЛАЙН 176
+# ПОЛНОСТЬЮ РАБОТАЕТ, СМОТРЕТЬ ЛАЙН 189
 
 URL = "https://www.coursera.org"
 BROWSER = init_browser.getBrowser()
@@ -186,7 +186,7 @@ def parseBegin(DBLinks):
         PAGES_TOTAL = pagesCountCurrentQuery + PAGES_TOTAL
 
         # в каждой категории проходимся по всем страницам
-        for i in range(pagesCountCurrentQuery):
+        for i in range(pagesCountCurrentQuery)[:2]: # удалить [:2]
             log(f"Parsing page {i + 1}")
             # ждём появления всех контейнеров с курсами и кнопки далее
             courses = False
@@ -253,7 +253,7 @@ def init(Log):
     global LOG
     LOG = Log
     print(f"Parsing {URL}")
-    DBLinks = db_connector.getCoursesLinksByURL(URL)
+    DBLinks = db_connector.getCoursesLinksByPlatform(URL)
     start = time.time()
     parseBegin(DBLinks)
     print(f"Done. {URL} parsed with {COURSES_PARSED}. Total of {COURSES_PARSED + len(DBLinks)} courses in DB. Time: {int(time.time() - start)}sec")

@@ -1,12 +1,13 @@
-import parsers.components.course_class as course_class
-import time
-import parsers.components.init_browser as init_browser
-import parsers.components.waiter as waiter
+from parsers.components import course_class
+from parsers.components import init_browser
+from parsers.components import db_connector
+from parsers.components import waiter
 from selenium.webdriver.common.by import By
+import time
 import copy
 
 # РАБОТАЕТ ПОЛНОСТЬЮ
-# СМОТРЕТЬ ЛАЙН 44
+# СМОТРЕТЬ ЛАЙН 45
 
 URL = "https://www.edx.org"
 SITEMAP = "/sitemap"
@@ -41,12 +42,12 @@ def getAllTagsLinks():
     # формат словаря
     # TagName : Link
     data = {}
-    for i in BROWSER.find_elements(By.XPATH, xpathes[0])[:2]: # УБРАТЬ [:2]
+    for i in BROWSER.find_elements(By.XPATH, xpathes[0]): # УБРАТЬ [:4]
         data[f"{i.text}"] = i.get_attribute('href')
 
     return data
 
-def getCoursesFromTagPage(Link, Tag):
+def getCoursesFromTagPage(Link, Tag, DBLinks):
     global COURSES_TOTAL
     CoursesList = []
     BROWSER.get(Link)
@@ -74,6 +75,8 @@ def getCoursesFromTagPage(Link, Tag):
             link = BROWSER.find_element(By.XPATH, linkXpath).get_attribute('href')
             log(f"link: {link}")
             course.Link = link
+            if link in DBLinks:
+                continue
 
             titleXpath = container_xpath + "//div[@class='pgn__card-header-title-md']" + "/span"
             title = BROWSER.find_element(By.XPATH, titleXpath).text.split("\n")
@@ -96,14 +99,16 @@ def getCoursesFromTagPage(Link, Tag):
             log(f"Document: {document}")
             if document != "Course":
                 course.Document = document
+            course.Tags.append(Tag)
+            course.Platform = URL
+            log(f"Course tag: {course.Tags}")
             CoursesList.append(course)
-            course.Tags = Tag
             log(" ")
         log(" ")
     except:
         log("Error reading containers")
         return False
-    COURSES_TOTAL = COURSES_TOTAL + len(CoursesList)
+    COURSES_TOTAL = COURSES_TOTAL + len(containers)
     return CoursesList
 
 # парсит некрасивую страничку
@@ -127,11 +132,11 @@ def parseCheapDesign(Course, waitTime):
 
         err = "cheap difficulty"
         course.Difficulty = BROWSER.find_element(By.XPATH, xpathes[2]).text.split(": ")[1]
+
     except: 
         log(f"Err at {err}")
         return False
-    Course = course
-    return True
+    return course
 
 # парсит красивую страничку
 # Получает обьект курс и время
@@ -157,8 +162,7 @@ def parseNonCheapCourse(Course, waitTime):
         return False
     # если данные спарсились правильно - заносит изменения в оригинал
     # и возвращает True
-    Course = course
-    return True
+    return course
 
 def getCourseInfo(Course, waitTime):
     BROWSER.get(Course.Link)
@@ -178,17 +182,17 @@ def getCourseInfo(Course, waitTime):
     # результат получения данных со странички
     res = False
     if cheapDesign:
-        res = parseCheapDesign(Course, waitTime)
+        course = parseCheapDesign(Course, waitTime)
     else: 
-        res = parseNonCheapCourse(Course, waitTime)
+        course = parseNonCheapCourse(Course, waitTime)
     
-    return res
+    return course
 
-def parseBegin(AllCoursesList):
+def parseBegin(DBLinks):
     global COURSES_PARSED
     global COURSES_TOTAL
     global LOG
-    courses_local = []
+    coursesList = []
     data = False
     errors_left = 3
     while data == False and errors_left != 0:
@@ -204,35 +208,36 @@ def parseBegin(AllCoursesList):
         courses = False
         log(f"{tag} : {data[tag]}")
         while courses == False and errors_left != 0:
-            courses = getCoursesFromTagPage(data[tag], tag)
+            courses = getCoursesFromTagPage(data[tag], tag, DBLinks)
             errors_left = errors_left - 1
         if courses != False:
-            courses_local.extend(courses)
+            coursesList.extend(courses)
         log(" ")
 
-    log(f"Courses count: {len(courses_local)}")
-
+    coursesList = list(set(coursesList))
     # проходимся по курсам и собираем инфу с их страницы
-    for i in range(len(courses_local)):
+    for i in range(len(coursesList)):
         course = False
         errors_left = 3
         while course == False and errors_left != 0:
-            course = getCourseInfo(courses_local[i], 5)
+            course = getCourseInfo(coursesList[i], 5)
             errors_left = errors_left - 1
         if course != False:
-            courses_local[i] = course
+            coursesList[i] = course
             COURSES_PARSED = COURSES_PARSED + 1
         else: 
-            log(f"Error parsing {i}: {courses_local[i]}")
+            log(f"Error parsing {i}: {coursesList[i]}")
         log(" ")
 
-    AllCoursesList.extend(courses_local)
+    db_connector.insertCoursesListToDB(coursesList)
+    COURSES_PARSED = len(coursesList)
 
-def init(AllCourses, Log):
+def init(Log):
     global LOG
     LOG = Log
     print(f"Parsing {URL}")
+    DBLinks = db_connector.getCoursesLinksByPlatform(URL)
     start = time.time()
-    parseBegin(AllCourses)
-    print(f"Done. {URL} parsed. Total of {COURSES_PARSED}/{COURSES_TOTAL} courses. Time: {int(time.time() - start)}sec")
+    parseBegin(DBLinks)
+    print(f"Done. {URL} parsed. Total of {COURSES_PARSED}/{COURSES_TOTAL} courses with {len(DBLinks)} in DataBase. Time: {int(time.time() - start)}sec")
 
