@@ -11,10 +11,5 @@ if __name__ == '__main__':
     parse_sololearn.init()
     parse_alison.init(False)
     parse_edX.init(False)
-    courses = []
-    courses.extend(DB.getAllCoursesByPlatform("https://www.edx.org"))
-    courses.extend(DB.getAllCoursesByPlatform("https://alison.com"))
-    courses.extend(DB.getAllCoursesByPlatform("https://www.coursera.org"))
-    courses.extend(DB.getAllCoursesByPlatform("https://www.sololearn.com"))
-    print(f"Coruses: {len(courses)}")
+    parse_edX.init(False)
         

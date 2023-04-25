@@ -3,11 +3,13 @@ from parsers.components import init_browser
 from parsers.components import db_connector
 from parsers.components import waiter
 from selenium.webdriver.common.by import By
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.support.ui import WebDriverWait
 import time
 import copy
 
 # РАБОТАЕТ ПОЛНОСТЬЮ
-# СМОТРЕТЬ ЛАЙН 45
+# СМОТРЕТЬ ЛАЙН 191
 
 URL = "https://www.edx.org"
 SITEMAP = "/sitemap"
@@ -19,97 +21,78 @@ COURSES_TOTAL = 0
 # Сколько спарсили
 COURSES_PARSED = 0
 
-# тестовый лист с курсами
-COURSES_LIST = []
-LOG = True
+LOG = False
 
 def log(string):
     if LOG:
-        print(string)
+        log(string)
 
 
-def getAllTagsLinks():
-    BROWSER.get(URL + SITEMAP)
-    xpathes = ["(//h2[@class='h3 mb-3'])[3]/..//a"]
+def getPagesCount():
+    BROWSER.get(URL + "/search?tab=course")  
+    errors = 5
+    counterXpath = "//ul[@class='pagination']/li[last()-1]"
+    cookies = "//button[@id='onetrust-accept-btn-handler']"
+    WebDriverWait(BROWSER, 10).until(EC.element_to_be_clickable((By.XPATH, cookies)))
+    if len(BROWSER.find_elements(By.XPATH, cookies)) != 0:
+        BROWSER.find_element(By.XPATH, cookies).click()
+    BROWSER.refresh()
+    pagesCount = False
+    while errors != 0 and pagesCount == False:
+        errors = errors - 1
+        try:
+            waiter.waitAll(BROWSER, 5, counterXpath)
+            pagesCount = BROWSER.find_element(By.XPATH, counterXpath).text  
+        except:
+            pagesCount = False
+            
+    return int(pagesCount)
 
-    # if Bool
-    if waiter.waitAll(BROWSER, 5, xpathes):
-        log(f"Sitemap page loaded successfuly")
-    else: 
-        log("Error at loading sitemap")
+
+def getCoursesFromPage(DBLinks):
+    data = {
+        "container" : "//div[@class='base-card-wrapper']",
+        "title" : "//div[@class='pgn__card-header-title-md']/span",
+        "author" : "//div[@class='pgn__card-header-subtitle-md']",
+        "imageLink" : "//img[@class='pgn__card-image-cap']",
+        "link" : "//a[@class='base-card-link']"
+    }
+    coursesList = []
+    xpathes = []
+    for key in data:
+        xpathes.append(data[key])
+    waiter.waitAll(BROWSER, 5, xpathes)
+    errs = 5
+    success = False
+    while errs != 0 and not success:
+        errs = errs - 1
+        try:
+            containers = BROWSER.find_elements(By.XPATH, data["container"])
+            titles = BROWSER.find_elements(By.XPATH, data["title"])
+            authors = BROWSER.find_elements(By.XPATH, data["author"])
+            images = BROWSER.find_elements(By.XPATH, data["imageLink"])
+            links = BROWSER.find_elements(By.XPATH, data["link"])
+            success = True
+        except:
+            success = False
+
+    if len(containers) == 0:
         return False
 
-    # формат словаря
-    # TagName : Link
-    data = {}
-    for i in BROWSER.find_elements(By.XPATH, xpathes[0]): # УБРАТЬ [:4]
-        data[f"{i.text}"] = i.get_attribute('href')
 
-    return data
-
-def getCoursesFromTagPage(Link, Tag, DBLinks):
-    global COURSES_TOTAL
-    CoursesList = []
-    BROWSER.get(Link)
-    xpathes = [
-        "(//div[@class='base-card-wrapper'])",                            # контейнер с курсом
-        "//div[@class='pgn__card-header-subtitle-md']/span/span/span"   # блок автора
-               ]
-    if waiter.waitAll(BROWSER, 5, xpathes):
-        log(f"Tag page loaded successfuly")
-    else: 
-        log("Error at loading tag page")
-        return False
-
-    containers = BROWSER.find_elements(By.XPATH, xpathes[0])
-    log(f"Containers: {len(containers)}")
+    for i in range(len(containers)):
+        if links[i] in DBLinks:
+            continue
+        course = course_class.getCourse()
+        course.Author = authors[i].text
+        course.Title = "".join(titles[i].text.split("\n"))
+        course.ImageLink = images[i].get_attribute('src')
+        course.Link = links[i].get_attribute('href')
+        course.Platform = URL
+        coursesList.append(course)
     
-    # проходимся по контейнерам и собираем с них инфу
-    try:
-        for container in range(len(containers)):
-            container_xpath = xpathes[0] + f"[{container + 1}]"
-            log(f"Container: {container + 1}")
-            course = course_class.getCourse()
+    return coursesList
 
-            linkXpath = container_xpath + "/a"
-            link = BROWSER.find_element(By.XPATH, linkXpath).get_attribute('href')
-            log(f"link: {link}")
-            course.Link = link
-            if link in DBLinks:
-                continue
-
-            titleXpath = container_xpath + "//div[@class='pgn__card-header-title-md']" + "/span"
-            title = BROWSER.find_element(By.XPATH, titleXpath).text.split("\n")
-            title = " ".join(title)
-            log(f"Title: {title}")
-            course.Title = title
-
-            imageLink = container_xpath + "//img"
-            imageLink = BROWSER.find_element(By.XPATH, imageLink).get_attribute('src')
-            log(f"Image link: {imageLink}")
-            course.ImageLink = imageLink
-
-            authorXpath = container_xpath + "//div[@class='pgn__card-header-subtitle-md']"
-            author = BROWSER.find_element(By.XPATH, authorXpath).text
-            log(f"Author: {author}")
-            course.Author = author
-
-            documentXpath = container_xpath + "//span[@class='badge badge-primary']"
-            document = BROWSER.find_element(By.XPATH, documentXpath).text
-            log(f"Document: {document}")
-            if document != "Course":
-                course.Document = document
-            course.Tags.append(Tag)
-            course.Platform = URL
-            log(f"Course tag: {course.Tags}")
-            CoursesList.append(course)
-            log(" ")
-        log(" ")
-    except:
-        log("Error reading containers")
-        return False
-    COURSES_TOTAL = COURSES_TOTAL + len(containers)
-    return CoursesList
 
 # парсит некрасивую страничку
 # Получает обьект курс и время
@@ -119,22 +102,32 @@ def parseCheapDesign(Course, waitTime):
     # а если будет ошибка, то оригинал не пострадает
     course = copy.deepcopy(Course)
     try:
-        err = "cheap description"
-        # ждём блок описания, блок длительности, блок цены. блок тегов, блок сложности, блок автора
-        xpathes = ["//div[@class='p']", 
-                       "(//div[@class='ml-3']/div[@class='h4 mb-0'])[1]",
-                       "//ul[@class='mb-0 pl-3 ml-1']//span[contains(text(), 'Level')]/.."]
+        data = {
+        "tag" : "(//a[@class='muted-link inline-link'])[2]",
+        "description" : "//div[@class='p']",
+        "duration" : "(//div[@class='ml-3']/div[@class='h4 mb-0'])[1]",
+        "difficulty" : "//span[contains(text(),'Level')]/..",
+        "enrolled" : "(//div[@class='small'])[last()]"
+        }
+        xpathes = [data[key] for key in data]
         waiter.waitAll(BROWSER, waitTime, xpathes)
 
-        course.Description = BROWSER.find_element(By.XPATH, xpathes[0]).text
+        err = "cheap description"
+        course.Description = BROWSER.find_element(By.XPATH, data["description"]).text
+
         err = "cheap duration"
-        course.Duration = BROWSER.find_element(By.XPATH, xpathes[1]).text
+        course.Duration = BROWSER.find_element(By.XPATH, data["duration"]).text
 
         err = "cheap difficulty"
-        course.Difficulty = BROWSER.find_element(By.XPATH, xpathes[2]).text.split(": ")[1]
+        course.Difficulty = BROWSER.find_element(By.XPATH, data["difficulty"]).text.split(": ")[1]
 
+        err = "cheap tag"
+        course.Tags.append(BROWSER.find_element(By.XPATH, data["tag"]).text)
+
+        err = "cheap enrolled"
+        course.Students = BROWSER.find_element(By.XPATH, data["enrolled"]).text.split("already")[0]
     except: 
-        log(f"Err at {err}")
+        log(f"Err at {err} in {course.Link}")
         return False
     return course
 
@@ -158,11 +151,12 @@ def parseNonCheapCourse(Course, waitTime):
         course.Description = BROWSER.find_element(By.XPATH, xpathes[2]).text
         course.Document = "Certificate"
     except:
-        log(f"Error at {err}")
+        log(f"Error at {err} in {course.Link}")
         return False
     # если данные спарсились правильно - заносит изменения в оригинал
     # и возвращает True
     return course
+
 
 def getCourseInfo(Course, waitTime):
     BROWSER.get(Course.Link)
@@ -173,64 +167,61 @@ def getCourseInfo(Course, waitTime):
     xpathes = ["(//div[@class='ml-3']/div[@class='h4 mb-0'])[last()]",
                "//div[@class='main d-flex flex-wrap']"]
     # если дождались один из 2х тогда работаем дальше, иначе выход
-    if waiter.waitOne(BROWSER, waitTime, xpathes):
-        log(f"Waited one of success!")
-    else: return False
+    if not waiter.waitOne(BROWSER, waitTime, xpathes):
+        return False
 
     cheapDesign = bool(len(BROWSER.find_elements(By.XPATH, xpathes[0])))
     log(f"Cheap Design: {cheapDesign}")
     # результат получения данных со странички
-    res = False
     if cheapDesign:
-        course = parseCheapDesign(Course, waitTime)
+        result = parseCheapDesign(Course, waitTime)
     else: 
-        course = parseNonCheapCourse(Course, waitTime)
+        result = parseNonCheapCourse(Course, waitTime)
     
-    return course
+    return result
 
 def parseBegin(DBLinks):
     global COURSES_PARSED
     global COURSES_TOTAL
     global LOG
     coursesList = []
-    data = False
-    errors_left = 3
-    while data == False and errors_left != 0:
-        data = getAllTagsLinks()
-        errors_left = errors_left - 1
-
-    if data == False:
-        return data
-
-    # проходимся по тегам и собираем каждый курс с тега
-    for tag in data:
-        errors_left = 3
+    pagesCount = getPagesCount()    
+    log(pagesCount)
+    
+    for i in range(4): # range(pagesCount)
+        errors_left = 5
         courses = False
-        log(f"{tag} : {data[tag]}")
-        while courses == False and errors_left != 0:
-            courses = getCoursesFromTagPage(data[tag], tag, DBLinks)
+        BROWSER.get(URL + f"/search?tab=course&page={i + 1}")
+        while errors_left != 0 and courses == False:
             errors_left = errors_left - 1
+            try:
+                courses = getCoursesFromPage(DBLinks)
+            except:
+                courses = False
         if courses != False:
             coursesList.extend(courses)
-        log(" ")
 
+    log(f"Courses: {len(coursesList)}")
     coursesList = list(set(coursesList))
+    coursesFromPagesList = []
+    log(f"Courses: {len(coursesList)}")
     # проходимся по курсам и собираем инфу с их страницы
     for i in range(len(coursesList)):
-        course = False
+        log(f"I: {coursesList.index(coursesList[i])}")
+        parsingResult = False
         errors_left = 3
-        while course == False and errors_left != 0:
-            course = getCourseInfo(coursesList[i], 5)
+        while parsingResult == False and errors_left != 0:
+            parsingResult = getCourseInfo(coursesList[i], 5)
             errors_left = errors_left - 1
-        if course != False:
-            coursesList[i] = course
+        if parsingResult != False:
+            coursesFromPagesList.append(copy.copy(parsingResult))
             COURSES_PARSED = COURSES_PARSED + 1
         else: 
             log(f"Error parsing {i}: {coursesList[i]}")
         log(" ")
 
-    db_connector.insertCoursesListToDB(coursesList)
-    COURSES_PARSED = len(coursesList)
+    db_connector.insertCoursesListToDB(coursesFromPagesList)
+    
 
 def init(Log):
     global LOG
