@@ -12,6 +12,7 @@ import copy
 # СМОТРЕТЬ ЛАЙН 191
 
 URL = "https://www.edx.org"
+PLATFORM = "edx"
 SITEMAP = "/sitemap"
 
 BROWSER = init_browser.getBrowser()
@@ -88,7 +89,8 @@ def getCoursesFromPage(DBLinks):
         course.Title = "".join(titles[i].text.split("\n"))
         course.ImageLink = images[i].get_attribute('src')
         course.Link = links[i].get_attribute('href')
-        course.Platform = URL
+        course.Platformlink = URL
+        course.PlatformName = PLATFORM
         coursesList.append(course)
     
     return coursesList

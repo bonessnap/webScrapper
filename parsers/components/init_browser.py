@@ -2,7 +2,6 @@ from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 
 def getBrowser():
-
     # Настройки браузера
     chrome_options = Options()
     chrome_options.add_argument("--window-size=1920,1080")

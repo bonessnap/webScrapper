@@ -14,8 +14,10 @@ class Course:
         self.Language = ""
         self.Price = ""
         self.Difficulty = ""
-        self.Platform = ""
+        self.Platformlink = ""
+        self.PlatformName = ""
 
+    # если два курса имеют общую ссылку то это один курс
     def __eq__(self, other):
         if type(other) != type(self):
             return False
@@ -29,11 +31,11 @@ class Course:
         return hash(self.Link)
     
     def printSelf(self):
-        print("Platform:", self.Platform)
+        print("Platform:", self.PlatformName)
+        print("Platform url:", self.Platformlink)
         print("Title:", self.Title)
         print("Link:", self.Link)
         print("Author:", self.Author)
-        #print("Desc:", len(self.Description), "symbols")
         print("Desc:", self.Description)
         print("Tags:", self.Tags)
         print("ImageLink:", self.ImageLink)

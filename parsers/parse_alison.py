@@ -11,6 +11,7 @@ from bs4 import BeautifulSoup
 # смотреть лайн 135 (заменить кол-во курсов)
 
 URL = "https://alison.com"
+PLATFORM = "alison"
 SITEMAP = "/sitemap"
 
 COURSES_TOTAL = 0
@@ -114,7 +115,8 @@ def getCourseInfoFromLink(Link, WaitTime):
         # стандартные поля по-умолчанию
         course.Document = "Sertificate"
         course.Link = Link
-        course.Platform = URL
+        course.Platformlink = URL
+        course.PlatformName = PLATFORM
     except:
         Log(f"Error at {err}")
         return False

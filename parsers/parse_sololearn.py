@@ -10,6 +10,7 @@ from parsers.components import db_connector
 Courses = []
 
 URL = "https://www.sololearn.com"
+PLATFORM = "sololearn"
 
 
 def parseBegin(DBLinks):
@@ -41,6 +42,8 @@ def parseBegin(DBLinks):
         course.Price = "Free"
         course.Author = "Sololearn"
         course.Document = "Certificate"
+        course.Platformlink = URL
+        course.PlatformName = PLATFORM
         Courses.append(course)
 
     for xpath in range(len(Xpathes)):
