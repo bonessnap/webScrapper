@@ -8,63 +8,33 @@ from parsers.components import init_browser
 from parsers.components import db_connector
 from parsers.components import waiter
 
-# ПОЛНОСТЬЮ РАБОТАЕТ, СМОТРЕТЬ ЛАЙН 189
+# ПОЛНОСТЬЮ РАБОТАЕТ, СМОТРЕТЬ ЛАЙН 157
 
 URL = "https://www.coursera.org"
 PLATFORM = "coursera"
 BROWSER = init_browser.getBrowser()
-
-# сколько всего страниц и курсов на сайте
-PAGES_TOTAL = 0
-
-# сколько спарсили страниц и курсов
-PAGES_PARSED = 0
 COURSES_PARSED = 0
 
-# тестовый лист с курсами
-COURSES_LIST = []
-
 LOG = False
-
-# если при инициализации функции указать log=True, то будет логироваться в консоль инфа
-
 
 def log(string):
     if LOG:
         print(string)
 
-
-def getAllQueries(Xpath):
-    queries = []
-    # находим все теги и ссылки на курсы по тегам
-    # дегрис это неправильные ссылки, на них нет курсов и они выдают ошибку
-    for a in BROWSER.find_elements(By.XPATH, Xpath):
-        if len(a.get_attribute('href').split("/")) == 4:
-            queries.append(a.get_attribute('href'))
-    return queries
-
-def getAllTags(Xpath):
-    queries = []
-    for a in BROWSER.find_elements(By.XPATH, Xpath):
-        if len(a.get_attribute('href').split("/")) == 4:
-            queries.append(a.text)
-    return queries
-
-
 # возвращает количество страниц на текущем запросе
 def getPagesTotalCount(xpath):
-    errors = 3
-    pagesCount = False
-    while errors != 0 and pagesCount == False:
-        errors = errors - 1
+    pagesCount = 0
+    for _ in range(3):
         try:
             waiter.waitAll(BROWSER, 5, [xpath])
             pagesCount = int(BROWSER.find_element(By.XPATH, xpath).text)
-            log(f"Pages total: {pagesCount}")
+            break
         except:
-            log(f"err getting pages count")
-            pagesCount = False
+            pass
+
+    print(f"Pages Count: {pagesCount}")
     return pagesCount
+
 
 # получает курсы со странички и заносит их в список
 def getCoursesFromPage(html, Tag, DBLinks):
@@ -143,119 +113,92 @@ def getCoursesFromPage(html, Tag, DBLinks):
 
 
 def parseBegin(DBLinks):
-    global PAGES_PARSED
-    global PAGES_TOTAL
     global LOG
     global BROWSER
     global COURSES_PARSED
 
     data = {
-        # первые 4 блока с тегами и ссылками на поиск курсов по тегу (фильтр ?query=* ) внизу страницы
-        "Queries" : "(//div[@class='cds-9 rc-SubFooterSection lohp-rebrand css-0 cds-11 cds-grid-item cds-61'])[position() < 5]//a",
+        # первые 4 блока с тегами и ссылками на поиск курсов по тегу (фильтр ?query=* в адресной строке) внизу страницы
+        # эти блоки прилетают в разном виде, иногда 1 иногда 2
+        "Queries_type_1" : "(//div[@class='cds-9 rc-SubFooterSection lohp-rebrand css-0 cds-11 cds-grid-item cds-61'])[position() < 5]//a",
+        "Queries_type_2" : "(//div[@class='cds-63 rc-SubFooterSection lohp-rebrand css-0 cds-65 cds-grid-item cds-115'])[position() < 5]//a",
         # контейнеры с курсами на странице
         "container" : "//li[@class='cds-9 css-0 cds-11 cds-grid-item cds-56 cds-64 cds-76']",
         # блок в котором указано количество странци по текущему запросу
         "pagesCount" : "//div[@class='pagination-controls-container']/*[last()-1]",
-        # кнопка перехода далее, иногда это кнопка, а иногда ссылка <a> внутри <div>
+        # кнопка перехода далее, !!!!!!иногда это кнопка, а иногда ссылка <a> внутри <div>!!!!!!!
         "nextPageButton" : "//div[@class='pagination-controls-container']/*[last()]"
     }
     CoursesList = []
+    # query - запрос. Адрес выходит coursera.org/courses?query=...
     queries = []
+    # tags - название запроса
     tags = []
-    err_counter = 5
     BROWSER.get(URL + "/courses")
-    # достаем категории и ссылки на них на стартовой странице
-    while len(queries) == 0 and err_counter != 0:
-        queries = getAllQueries(data["Queries"])
-        tags = getAllTags(data["Queries"])
-        err_counter = err_counter - 1
-        if len(queries) == 0:
-            BROWSER.quit()
-            BROWSER = init_browser.getBrowser()
-            BROWSER.get(URL + "/courses")
-
-    log(f"Queries: {len(queries)}")
+    # получаем названия тегов и ссылки на фильт по тегам на сайте
+    for _ in range(5):
+        try:
+            waiter.waitOne(BROWSER, 5, [ [data["Queries_type_1"]], data["Queries_type_2"] ] )
+            if len(BROWSER.find_elements(By.XPATH, data["Queries_type_1"])) != 0:
+                queries = [a.get_attribute('href') for a in BROWSER.find_elements(By.XPATH, data["Queries_type_1"]) if len(a.get_attribute('href').split("/")) == 4]
+                tags = [a.text for a in BROWSER.find_elements(By.XPATH, data["Queries1"]) if len(a.get_attribute('href').split("/")) == 4]
+            else:
+                queries = [a.get_attribute('href') for a in BROWSER.find_elements(By.XPATH, data["Queries_type_2"]) if len(a.get_attribute('href').split("/")) == 4]
+                tags = [a.text for a in BROWSER.find_elements(By.XPATH, data["Queries_type_2"]) if len(a.get_attribute('href').split("/")) == 4]
+            if len(queries) != 0 and len(tags) != 0:
+                break
+        except:
+            BROWSER.refresh()
+            pass
     if len(queries) == 0 or len(tags) == 0:
         return False
 
-    # проходимся по каждой категории
-    for query in queries[:2]: #удалить [:2]
-        log(f"Query {queries.index(query)}: {query}")
+    # проходимся по ссылкам
+    for query in queries[:2]:
         BROWSER.get(query)
         waiter.waitAll(BROWSER, 5, [data["pagesCount"]])
-        # получаем количество страниц в категории
         pagesCountCurrentQuery = getPagesTotalCount(data["pagesCount"])
-        PAGES_TOTAL = pagesCountCurrentQuery + PAGES_TOTAL
-
-        # в каждой категории проходимся по всем страницам
-        for i in range(pagesCountCurrentQuery)[:2]: # удалить [:2]
-            log(f"Parsing page {i + 1}")
-            # ждём появления всех контейнеров с курсами и кнопки далее
-            courses = False
-            course_err_count = 3
-            # пробуем считать курсы со страницы трижды
-            while courses == False and course_err_count != 0:
+        for i in range(pagesCountCurrentQuery):
+            courses = None
+            for _ in range(3):
                 try:
                     waiter.waitAll(BROWSER, 5, [data["container"]])
-                    html = BROWSER.page_source
-                    courses = getCoursesFromPage(html, tags[queries.index(query)], DBLinks)
-                except: 
-                    courses = False
-                    log("Error reading page")
-                course_err_count = course_err_count - 1
-            
-            # если считали курсы - добавляем в список
-            if courses != False:
-                log(f"Added {len(courses)} courses")
-                CoursesList.extend(courses)
-                COURSES_PARSED = COURSES_PARSED + len(courses)
-                PAGES_PARSED = PAGES_PARSED + 1
-            
-            # кнопка навигации иногда это просто button, а иногда - <a> внутри <div> (иллюзия кнопки)
-            # понять можно по тексту - в 1м случае текст кнопки без подчеркивания, во втором - с подчерком
-            # здесь в цикле пробуем перейти на следующую страницу
-            # так же кнопка иногда "мигает" - появляется и пропадает из ДОМ модели
-            # waiter сказал что кнопка есть -> она пропала -> не можем нажать
-            # без цикла троувит ошибку переодически, в цикле работает как часы
-            nav_err_count = 10
-            # если в результате нажатий перешли на следующую страницу то останавливаем цикл
-            pageNextClicked = False
-            while nav_err_count != 0 and not pageNextClicked and i < pagesCountCurrentQuery - 1:
-                nav_err_count = nav_err_count - 1
+                    courses = getCoursesFromPage(BROWSER.page_source, tags[queries.index(query)], DBLinks)
+                    CoursesList.extend(courses)
+                    COURSES_PARSED = COURSES_PARSED + len(courses)
+                    break
+                except:
+                    pass
+            # переходим на следующую страницу
+            for _ in range(3):
                 try:
+                    # иногда кнопка перехода это блок <div> с ссылкой <a> на следующую страницу
                     waiter.waitAll(BROWSER, 5, [data["nextPageButton"]])
                     navElem = BROWSER.find_element(By.XPATH, data["nextPageButton"])
-                    log(f"Nav is {navElem.tag_name}")
                     if i != pagesCountCurrentQuery - 1:
                         if navElem.tag_name == "a":
                             BROWSER.get(navElem.get_attribute('href'))
+                        # иногда кнопка перехода это именно что кнопка <button>
                         else:
-                            WebDriverWait(BROWSER, 10).until(EC.element_to_be_clickable((By.XPATH, data["nextPageButton"])))
+                            WebDriverWait(BROWSER, 5).until(EC.element_to_be_clickable((By.XPATH, data["nextPageButton"])))
                             BROWSER.find_element(By.XPATH, data["nextPageButton"]).click()
-                        pageNextClicked = True
+                        break
                 except:
-                    log(f"Nav error")
-                    pageNextClicked = False
-            log("")
-        log("")
+                    pass
 
-    log(f"Courses in list: {len(CoursesList)}")
     CoursesList = set(CoursesList)
-    log(f"Courses in clean list: {len(CoursesList)}")
     db_connector.insertCoursesListToDB(CoursesList)
 
     BROWSER.close()
     BROWSER.quit()
 
-# точка входа в программу
-# принимает список в который добавляются курсы и необходимость логгирования (True, False)
-
-
 def init(Log):
     global LOG
     LOG = Log
     print(f"Parsing {URL}")
-    DBLinks = db_connector.getCoursesLinksByPlatform(URL)
+    DBLinks = db_connector.getCoursesLinksByPlatformName(PLATFORM)
     start = time.time()
     parseBegin(DBLinks)
     print(f"Done. {URL} parsed with {COURSES_PARSED}. Total of {COURSES_PARSED + len(DBLinks)} courses in DB. Time: {int(time.time() - start)}sec")
+
+init(False)

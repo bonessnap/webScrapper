@@ -35,7 +35,7 @@ def getAllCoursesByPlatform(Platform):
     return courses
 
 # вовзращает ссыки курсов определенной платформы
-def getCoursesLinksByPlatform(Platform):
+def getCoursesLinksByPlatformName(Platform):
     if not os.path.exists(DB_PATH):
         return []
     
@@ -44,7 +44,7 @@ def getCoursesLinksByPlatform(Platform):
         while True:
             try:
                 course = pickle.load(f)
-                if course.Platform == Platform:
+                if course.PlatformName == Platform:
                     coursesLinks.append(course.Link)
             except:
                 break
@@ -55,22 +55,9 @@ def getCoursesLinksByPlatform(Platform):
 
 # добавляет список курсов в базу
 def insertCoursesListToDB(CoursesList):
-    for course in CoursesList:
-        insertCourseToDB(course)
+    [insertCourseToDB(course) for course in CoursesList]
 
 # Добавляет 1 курс в базу
 def insertCourseToDB(Course):
     with open(DB_PATH, 'ab') as f:
         pickle.dump(Course, f)
-
-# удаляет курсы с базы (не факт что работает)
-def removeCourseFromDB(Course):
-    courses = getCoursesLinksByPlatform()
-    try:
-        if Course in courses:
-            Course.remove(Course.index(courses))
-        with open(DB_PATH, 'wb') as f:
-            for course in courses:
-                pickle.dump(course, f)
-    except:
-        print("Error deleting course")

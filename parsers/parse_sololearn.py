@@ -38,7 +38,6 @@ def parseBegin(DBLinks):
         course.ImageLink = containers[container].find('div', class_='le-course-item-v3__icon').find('img')['src']
         course.Description = containers[container].find('p', class_='le-course-item-v3__description').text
         course.Link = URL + containers[container]['href']
-        course.Platform = URL
         course.Price = "Free"
         course.Author = "Sololearn"
         course.Document = "Certificate"
@@ -60,12 +59,12 @@ def parseBegin(DBLinks):
                     Courses[course].Tags.append(tags[xpath])
 
     browser.quit()
+    db_connector.insertCoursesListToDB(Courses)
 
 
 def init():
     print(f"Parsing {URL}")
-    DBLinks = db_connector.getCoursesLinksByPlatform(URL)
+    DBLinks = db_connector.getCoursesLinksByPlatformName(PLATFORM)
     start = time.time()
     parseBegin(DBLinks)
     print(f"Done. {URL} parsed with {len(Courses)} courses. Total of {len(Courses) + len(DBLinks)} courses in database. Time: {int(time.time() - start)}sec")
-    db_connector.insertCoursesListToDB(Courses)

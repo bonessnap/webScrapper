@@ -52,9 +52,6 @@ def getCourseInfoFromLink(Link, WaitTime):
         'ratingOneXpath': "//span[@class='course-love'][1]",
         'ratingTwoXpath': "//span[@class='course-like'][1]"
     }
-    xpathes = []
-    for key in data:
-        xpathes.append(data[key])
     err = "Loading page"
     BROWSER.get(Link)
 
@@ -129,7 +126,7 @@ def parseBegin(DBLinks):
     global COURSES_PARSED
     global BROWSER
     links = getCoursesLinks(DBLinks)
-    # ссылка на список курсов, нам ни к чему
+    # [0] = ссылка на список курсов, нам ни к чему
     links.remove(links[0])
     COURSES_TOTAL = len(links)
 
@@ -147,13 +144,14 @@ def parseBegin(DBLinks):
             db_connector.insertCourseToDB(course)
             Log("")
         Log("")
+    BROWSER.quit()
 
 
 def init(Log):
     global LOG
     LOG = Log
     print(f"Parsing {URL}")
-    DBLinks = db_connector.getCoursesLinksByPlatform(URL)
+    DBLinks = db_connector.getCoursesLinksByPlatformName(PLATFORM)
     start = time.time()
     parseBegin(DBLinks)
     print(f"Done. {URL} parsed with {COURSES_PARSED}/{COURSES_TOTAL} courses. Total of {COURSES_PARSED + len(DBLinks)} courses in database. Time: {int(time.time() - start)}sec")

@@ -9,7 +9,7 @@ import time
 import copy
 
 # РАБОТАЕТ ПОЛНОСТЬЮ
-# СМОТРЕТЬ ЛАЙН 191
+# СМОТРЕТЬ ЛАЙН 189
 
 URL = "https://www.edx.org"
 PLATFORM = "edx"
@@ -59,10 +59,7 @@ def getCoursesFromPage(DBLinks):
         "link" : "//a[@class='base-card-link']"
     }
     coursesList = []
-    xpathes = []
-    for key in data:
-        xpathes.append(data[key])
-    waiter.waitAll(BROWSER, 5, xpathes)
+    waiter.waitAll(BROWSER, 5, data.values())
     errs = 5
     success = False
     while errs != 0 and not success:
@@ -111,8 +108,7 @@ def parseCheapDesign(Course, waitTime):
         "difficulty" : "//span[contains(text(),'Level')]/..",
         "enrolled" : "(//div[@class='small'])[last()]"
         }
-        xpathes = [data[key] for key in data]
-        waiter.waitAll(BROWSER, waitTime, xpathes)
+        waiter.waitAll(BROWSER, waitTime, data.values())
 
         err = "cheap description"
         course.Description = BROWSER.find_element(By.XPATH, data["description"]).text
@@ -190,7 +186,7 @@ def parseBegin(DBLinks):
     pagesCount = getPagesCount()    
     log(pagesCount)
     
-    for i in range(4): # range(pagesCount)
+    for i in range(3): # range(pagesCount)
         errors_left = 5
         courses = False
         BROWSER.get(URL + f"/search?tab=course&page={i + 1}")
@@ -208,28 +204,29 @@ def parseBegin(DBLinks):
     coursesFromPagesList = []
     log(f"Courses: {len(coursesList)}")
     # проходимся по курсам и собираем инфу с их страницы
-    for i in range(len(coursesList)):
-        log(f"I: {coursesList.index(coursesList[i])}")
+    for i in coursesList:
         parsingResult = False
         errors_left = 3
         while parsingResult == False and errors_left != 0:
-            parsingResult = getCourseInfo(coursesList[i], 5)
+            parsingResult = getCourseInfo(i, 5)
             errors_left = errors_left - 1
+
         if parsingResult != False:
             coursesFromPagesList.append(copy.copy(parsingResult))
             COURSES_PARSED = COURSES_PARSED + 1
         else: 
-            log(f"Error parsing {i}: {coursesList[i]}")
+            log(f"Error parsing {coursesList.index(i)} at: {i.Link}")
         log(" ")
 
     db_connector.insertCoursesListToDB(coursesFromPagesList)
+    BROWSER.quit()
     
 
 def init(Log):
     global LOG
     LOG = Log
     print(f"Parsing {URL}")
-    DBLinks = db_connector.getCoursesLinksByPlatform(URL)
+    DBLinks = db_connector.getCoursesLinksByPlatformName(PLATFORM)
     start = time.time()
     parseBegin(DBLinks)
     print(f"Done. {URL} parsed. Total of {COURSES_PARSED}/{COURSES_TOTAL} courses with {len(DBLinks)} in DataBase. Time: {int(time.time() - start)}sec")
