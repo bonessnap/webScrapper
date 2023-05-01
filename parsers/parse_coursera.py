@@ -8,7 +8,7 @@ from parsers.components import init_browser
 from parsers.components import db_connector
 from parsers.components import waiter
 
-# ПОЛНОСТЬЮ РАБОТАЕТ, СМОТРЕТЬ ЛАЙН 157
+# ПОЛНОСТЬЮ РАБОТАЕТ, СМОТРЕТЬ ЛАЙН 155
 
 URL = "https://www.coursera.org"
 PLATFORM = "coursera"
@@ -23,17 +23,13 @@ def log(string):
 
 # возвращает количество страниц на текущем запросе
 def getPagesTotalCount(xpath):
-    pagesCount = 0
     for _ in range(3):
         try:
             waiter.waitAll(BROWSER, 5, [xpath])
-            pagesCount = int(BROWSER.find_element(By.XPATH, xpath).text)
-            break
+            return int(BROWSER.find_element(By.XPATH, xpath).text)
         except:
             pass
-
-    print(f"Pages Count: {pagesCount}")
-    return pagesCount
+    return 0
 
 
 # получает курсы со странички и заносит их в список
@@ -141,10 +137,12 @@ def parseBegin(DBLinks):
             waiter.waitOne(BROWSER, 5, [ [data["Queries_type_1"]], data["Queries_type_2"] ] )
             if len(BROWSER.find_elements(By.XPATH, data["Queries_type_1"])) != 0:
                 queries = [a.get_attribute('href') for a in BROWSER.find_elements(By.XPATH, data["Queries_type_1"]) if len(a.get_attribute('href').split("/")) == 4]
-                tags = [a.text for a in BROWSER.find_elements(By.XPATH, data["Queries1"]) if len(a.get_attribute('href').split("/")) == 4]
+                tags = [a.text for a in BROWSER.find_elements(By.XPATH, data["Queries_type_2"]) if len(a.get_attribute('href').split("/")) == 4]
+                print("Query type 1")
             else:
                 queries = [a.get_attribute('href') for a in BROWSER.find_elements(By.XPATH, data["Queries_type_2"]) if len(a.get_attribute('href').split("/")) == 4]
                 tags = [a.text for a in BROWSER.find_elements(By.XPATH, data["Queries_type_2"]) if len(a.get_attribute('href').split("/")) == 4]
+                print("Query type 2")
             if len(queries) != 0 and len(tags) != 0:
                 break
         except:
@@ -154,11 +152,11 @@ def parseBegin(DBLinks):
         return False
 
     # проходимся по ссылкам
-    for query in queries[:2]:
+    for query in queries[:2]: # удалить [:2]
         BROWSER.get(query)
         waiter.waitAll(BROWSER, 5, [data["pagesCount"]])
         pagesCountCurrentQuery = getPagesTotalCount(data["pagesCount"])
-        for i in range(pagesCountCurrentQuery):
+        for i in range(3):
             courses = None
             for _ in range(3):
                 try:
@@ -189,9 +187,6 @@ def parseBegin(DBLinks):
     CoursesList = set(CoursesList)
     db_connector.insertCoursesListToDB(CoursesList)
 
-    BROWSER.close()
-    BROWSER.quit()
-
 def init(Log):
     global LOG
     LOG = Log
@@ -200,5 +195,5 @@ def init(Log):
     start = time.time()
     parseBegin(DBLinks)
     print(f"Done. {URL} parsed with {COURSES_PARSED}. Total of {COURSES_PARSED + len(DBLinks)} courses in DB. Time: {int(time.time() - start)}sec")
-
-init(False)
+    BROWSER.close()
+    BROWSER.quit()
