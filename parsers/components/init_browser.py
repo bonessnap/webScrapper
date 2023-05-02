@@ -10,7 +10,7 @@ chrome_path = os.getcwd() + "\parsers\components\chrome\chromedriver"
 def getBrowser():
     # Настройки браузера
     chrome_options = Options()
-    chrome_options.add_argument("--headless") # Режим без открытия окна (тихий режим)
+    #chrome_options.add_argument("--headless") # Режим без открытия окна (тихий режим)
     chrome_options.add_argument("--no-sandbox") # Для безопасности в режиме headless
 
     chrome_options.add_argument("--window-size=1920,1080")

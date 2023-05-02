@@ -31,23 +31,16 @@ def log(string):
 
 def getPagesCount():
     BROWSER.get(URL + "/search?tab=course")  
-    errors = 5
     counterXpath = "//ul[@class='pagination']/li[last()-1]"
+    # куки на сайте
     cookies = "//button[@id='onetrust-accept-btn-handler']"
     WebDriverWait(BROWSER, 10).until(EC.element_to_be_clickable((By.XPATH, cookies)))
     if len(BROWSER.find_elements(By.XPATH, cookies)) != 0:
         BROWSER.find_element(By.XPATH, cookies).click()
     BROWSER.refresh()
-    pagesCount = False
-    while errors != 0 and pagesCount == False:
-        errors = errors - 1
-        try:
-            waiter.waitAll(BROWSER, 5, counterXpath)
-            pagesCount = BROWSER.find_element(By.XPATH, counterXpath).text  
-        except:
-            pagesCount = False
+    waiter.waitAll(BROWSER, 5, counterXpath)
             
-    return int(pagesCount)
+    return int(BROWSER.find_element(By.XPATH, counterXpath).text )
 
 
 def getCoursesFromPage(DBLinks):
@@ -183,7 +176,12 @@ def parseBegin(DBLinks):
     global COURSES_TOTAL
     global LOG
     coursesList = []
-    pagesCount = getPagesCount()    
+    for _ in range(3):
+        try:
+            pagesCount = getPagesCount()
+            break
+        except:
+            pass    
     log(pagesCount)
     
     for i in range(3): # range(pagesCount)

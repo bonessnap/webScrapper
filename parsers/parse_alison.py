@@ -102,24 +102,21 @@ def parseBegin(DBLinks):
         for _ in range(3):
             try:
                 course = getCourseInfoFromLink(link, 3)
-                #db_connector.insertCourseToDB(course)
+                db_connector.insertCourseToDB(course)
                 COURSES_PARSED = COURSES_PARSED + 1
                 break
             except Exception as e:
-                print(f"Error parsing {link}")
+                Log(f"Error parsing {link}")
                 pass
 
 
-def init(Log):
+def init(log):
     global LOG
-    LOG = Log
+    LOG = log
     print(f"Parsing {URL}")
     DBLinks = db_connector.getCoursesLinksByPlatformName(PLATFORM)
-    DBLinks = []
     start = time.time()
     parseBegin(DBLinks)
     print(f"Done. {URL} parsed with {COURSES_PARSED}/{COURSES_TOTAL} courses. Total of {COURSES_PARSED + len(DBLinks)} courses in database. Time: {int(time.time() - start)}sec")
     BROWSER.close()
     BROWSER.quit()
-
-init(False)
