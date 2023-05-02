@@ -18,7 +18,7 @@ def getAllCourses():
 
     return courses
 
-# возвращает все курсы определенной платформы
+# возвращает все курсы определенной платформы (PlatformName == Platform)
 def getAllCoursesByPlatform(Platform):
     if not os.path.exists(DB_PATH):
         return []
@@ -28,13 +28,13 @@ def getAllCoursesByPlatform(Platform):
         while True:
             try:
                 course = pickle.load(f)
-                if course.Platform == Platform:
+                if course.PlatformName == Platform:
                     courses.append(course)
             except:
                 break
     return courses
 
-# вовзращает ссыки курсов определенной платформы
+# вовзращает ссылки курсов определенной платформы 
 def getCoursesLinksByPlatformName(Platform):
     if not os.path.exists(DB_PATH):
         return []

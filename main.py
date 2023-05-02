@@ -1,5 +1,6 @@
 import parsers.components.course_class as course_class
 import parsers.components.db_connector as DB
+import time
     
 # точка входа в парсер
 if __name__ == '__main__':
@@ -14,10 +15,6 @@ if __name__ == '__main__':
 
     #rom parsers import parse_edX
     #parse_edX.init(False)
-
-    courses = DB.getAllCourses()
-    print("Courses in courses.txt: ", len(courses))
-    courses = DB.getAllCoursesByPlatform("sololearn")
 
     #import parse_skillshare
     #parse_skillshare.init(False)

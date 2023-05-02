@@ -66,5 +66,10 @@ def init():
     print(f"Parsing {URL}")
     DBLinks = db_connector.getCoursesLinksByPlatformName(PLATFORM)
     start = time.time()
-    parseBegin(DBLinks)
+    for _ in range(3):
+        try:
+            parseBegin(DBLinks)
+            break
+        except:
+            pass
     print(f"Done. {URL} parsed with {len(Courses)} courses. Total of {len(Courses) + len(DBLinks)} courses in database. Time: {int(time.time() - start)}sec")

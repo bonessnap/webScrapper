@@ -8,7 +8,7 @@ from bs4 import BeautifulSoup
 
 
 # РАБОТАЕТ ПОЛНОСТЬЮ
-# смотреть лайн 109 (заменить кол-во курсов)
+# смотреть лайн 100 (заменить кол-во курсов)
 
 URL = "https://alison.com"
 PLATFORM = "alison"
@@ -97,7 +97,7 @@ def parseBegin(DBLinks):
         except:
             pass
 
-    for link in links[:10]:
+    for link in links[:10]: # убрать [:10]
         Log(f">>Course link: {link}")
         for _ in range(3):
             try:
