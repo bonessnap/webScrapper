@@ -8,7 +8,7 @@ from parsers.components import init_browser
 from parsers.components import db_connector
 from parsers.components import waiter
 
-# ПОЛНОСТЬЮ РАБОТАЕТ, СМОТРЕТЬ ЛАЙН 155
+# ПОЛНОСТЬЮ РАБОТАЕТ, СМОТРЕТЬ ЛАЙН 153 и 157
 
 URL = "https://www.coursera.org"
 PLATFORM = "coursera"
@@ -138,11 +138,9 @@ def parseBegin(DBLinks):
             if len(BROWSER.find_elements(By.XPATH, data["Queries_type_1"])) != 0:
                 queries = [a.get_attribute('href') for a in BROWSER.find_elements(By.XPATH, data["Queries_type_1"]) if len(a.get_attribute('href').split("/")) == 4]
                 tags = [a.text for a in BROWSER.find_elements(By.XPATH, data["Queries_type_2"]) if len(a.get_attribute('href').split("/")) == 4]
-                print("Query type 1")
             else:
                 queries = [a.get_attribute('href') for a in BROWSER.find_elements(By.XPATH, data["Queries_type_2"]) if len(a.get_attribute('href').split("/")) == 4]
                 tags = [a.text for a in BROWSER.find_elements(By.XPATH, data["Queries_type_2"]) if len(a.get_attribute('href').split("/")) == 4]
-                print("Query type 2")
             if len(queries) != 0 and len(tags) != 0:
                 break
         except:
@@ -155,9 +153,8 @@ def parseBegin(DBLinks):
     for query in queries[:2]: # удалить [:2]
         BROWSER.get(query)
         waiter.waitAll(BROWSER, 5, [data["pagesCount"]])
-        pagesCountCurrentQuery = getPagesTotalCount(data["pagesCount"])
-        for i in range(3):
-            courses = None
+        pages = getPagesTotalCount(data["pagesCount"])
+        for page in range(3): # заменить на range(pages)
             for _ in range(3):
                 try:
                     waiter.waitAll(BROWSER, 5, [data["container"]])
@@ -168,21 +165,25 @@ def parseBegin(DBLinks):
                 except:
                     pass
             # переходим на следующую страницу
+            nextPage = False
             for _ in range(3):
                 try:
                     # иногда кнопка перехода это блок <div> с ссылкой <a> на следующую страницу
                     waiter.waitAll(BROWSER, 5, [data["nextPageButton"]])
                     navElem = BROWSER.find_element(By.XPATH, data["nextPageButton"])
-                    if i != pagesCountCurrentQuery - 1:
+                    if page != pages - 1:
                         if navElem.tag_name == "a":
                             BROWSER.get(navElem.get_attribute('href'))
                         # иногда кнопка перехода это именно что кнопка <button>
                         else:
                             WebDriverWait(BROWSER, 5).until(EC.element_to_be_clickable((By.XPATH, data["nextPageButton"])))
                             BROWSER.find_element(By.XPATH, data["nextPageButton"]).click()
+                        nextPage = True
                         break
                 except:
                     pass
+            if not nextPage:
+                break
 
     CoursesList = set(CoursesList)
     db_connector.insertCoursesListToDB(CoursesList)

@@ -4,8 +4,8 @@ import time
     
 # точка входа в парсер
 if __name__ == '__main__':
-    #from parsers import parse_coursera
-    #parse_coursera.init(False)
+    from parsers import parse_coursera
+    parse_coursera.init(False)
 
     from parsers import parse_sololearn
     parse_sololearn.init()

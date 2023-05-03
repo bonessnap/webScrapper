@@ -150,7 +150,6 @@ def parseBegin(DBLinks):
             pass    
     
     for i in range(3): # range(pagesCount)
-        courses = []
         BROWSER.get(URL + f"/search?tab=course&page={i + 1}")
         for _ in range(3):
             try:
